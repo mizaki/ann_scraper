@@ -1,18 +1,8 @@
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 
-# server
-server
-client
-web
-mobile
-status-page
-brand
-clerk
-genkan
-ops
-strait
-web-ember
-wiki
+# Dirs with JSON data
+output
+data
 
 # docker
 docker-sync.yml
