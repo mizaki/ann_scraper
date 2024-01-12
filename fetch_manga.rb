@@ -119,7 +119,13 @@ class Manga
     } unless @chapters.empty?
     data[:description] = {
       set: {
-        "en": @desc + ' Via ANN' # Add ANN URL?
+        # From https://www.animenewsnetwork.com/encyclopedia/api.php
+        # "We provide this API free of charge but you must
+        # list Anime News Network as the source of the data
+        # include a link to the relevant Encyclopedia entry (like "full details at Anime News Network") on any page
+        # that displays anime/manga/person details"
+
+        "en": @desc + " Source: ANN (https://www.animenewsnetwork.com/encyclopedia/manga.php?id=#{@ann_id})"
       }
     } unless @desc.empty?
     data[:volumes] = {
