@@ -37,11 +37,11 @@ def check_year(year, result)
   end
 end
 
-def search_titles(options)
+def search_titles(options, myparser)
   base_search_url = "https://www.animenewsnetwork.com/encyclopedia/reports.xml?id=155&type=manga&search="
   url = "#{base_search_url}#{options[:search_titles][0]}"
 
-  search_xml = parse_xml(url)
+  search_xml = myparser.parse_xml(url)
 
   matches = []
 

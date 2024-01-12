@@ -135,21 +135,21 @@ def parse_chapters(chapter_page)
   chapters
 end
 
-def load_page(base_url, subpage)
+def load_page(base_url, subpage, myparser)
   sub_url = "#{base_url}&page=34&subpage=#{subpage}"
-  return parse_html(sub_url)
+  return myparser.parse_html(sub_url)
 rescue StandardError => e
   puts "Failed to open URL: #{base_url}&page=34&subpage=#{subpage}. Error: #{e.message}"
 end
 
-def fetch_chapters(manga_id)
-  chapter_base_url = "https://www.animenewsnetwork.com/encyclopedia/manga.php?id=#{manga_id}&page=34"
+def fetch_chapters(options, myparser)
+  chapter_base_url = "https://www.animenewsnetwork.com/encyclopedia/manga.php?id=#{options[:ann_id]}&page=34"
   chapters = []
   subpage = 0
   @volume_num = 1
 
   loop do
-    doc = load_page(chapter_base_url, subpage)
+    doc = load_page(chapter_base_url, subpage, myparser)
     # Find links for other chapter pages
     pages_links = doc.at('#infotype-34 p')&.css('a')&.map { |a| a['href'] } || []
 

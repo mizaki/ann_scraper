@@ -12,13 +12,13 @@ class Manga
   attr_accessor :ann_id, :kitsu_id, :title, :image, :genres, :themes, :desc, :alt_titles,
                 :m_rating, :chapter_count, :chapters, :volume_count, :volumes,
                 :pages, :start_date, :end_date, :rating, :volume_urls,
-                :writer, :artist, :loc_titles, :serialised, :related_anime
+                :writer, :artist, :loc_titles, :serialised_ids, :serialised_names, :related_anime
 
   def initialize(ann_id:, title: "", kitsu_id: nil, image: "", genres: [], themes: [], desc: "",
                  alt_titles: [], m_rating: "", chapter_count: 0, chapters: [],
                  volume_count: 0, volumes: [], pages: 0, start_date: "", loc_titles: [],
                  end_date: "", rating: 0, volume_urls: [], writer: "", artist: "",
-                 serialised: [], related_anime: [])
+                 serialised_ids: [], serialised_names: [], related_anime: [])
     @ann_id = ann_id
     @kitsu_id = kitsu_id
     @title = title
@@ -36,7 +36,8 @@ class Manga
     @pages = pages
     @start_date = start_date
     @end_date = end_date
-    @serialised = serialised
+    @serialised_ids = serialised_ids
+    @serialised_names = serialised_names
     @rating = rating
     @volume_urls = volume_urls
     @writer = writer
@@ -49,6 +50,7 @@ class Manga
       ann_id: @ann_id,
       kitsu_id: @kitsu_id,
       title: @title,
+      serialised: @serialised_names,
       image: @image,
       genres: @genres,
       themes: @themes,
@@ -101,17 +103,17 @@ class Manga
       }.compact
     } unless @genres.empty? && @themes.empty?
     data[:productions] = {
-      add: @serialised.map { |serial|
+      add: @serialised_names.map { |serial|
         {
           type: "Production",
           role: "serialization",
           producer: {
             type: "Producer",
-            name: ann_serial_by_id(serial) || next
+            name: serial || next
           }
         }
       }.compact
-    } unless @serialised.empty?
+    } unless @serialised_names.empty?
     data[:chapters] = {
       add: [ @chapters.map(&:to_kitsu_hash).compact ]
     } unless @chapters.empty?
@@ -138,9 +140,9 @@ class Manga
   end
 end
 
-def fetch_vol_titles(id)
+def fetch_vol_titles(id, myparser)
   # For some reason the volume names are sometimes on the main series page (and not in XML)
-  page = parse_html("https://www.animenewsnetwork.com/encyclopedia/manga.php?id=#{id}")
+  page = myparser.parse_html("https://www.animenewsnetwork.com/encyclopedia/manga.php?id=#{id}")
   # '#infotype-20' is the ID for the volume names
   page.css('#infotype-20').children.each do |vol_title|
     match = vol_title&.text.match(/(\d+)\.(.*)/)
@@ -150,12 +152,12 @@ def fetch_vol_titles(id)
   end
 end
 
-def fetch_manga(options)
+def fetch_manga(options, myparser)
   url = "#{@base_manga_url}#{options[:ann_id]}"
 
   manga = Manga.new(ann_id: options[:ann_id])
 
-  doc = parse_xml(url)
+  doc = myparser.parse_xml(url)
 
   if doc.at('warning')
     puts "Problem with ID: #{options[:ann_id]} - #{doc.at('warning').text}"
@@ -232,21 +234,25 @@ def fetch_manga(options)
     end
 
     # Array of ANN IDs for serialised publication
-    manga.serialised = doc.css('manga related-prev[rel="serialized in"]').map { |rel| rel['id'] }
+    manga.serialised_ids = doc.css('manga related-prev[rel="serialized in"]').map { |rel| rel['id'] }
+    # Convert serial IDs to names
+    unless manga.serialised_ids.empty?
+      manga.serialised_names = manga.serialised_ids.map { |serial_id| ann_serial_by_id(serial_id, myparser) }
+    end
     # Array of ANN IDs and type (adaptation, spinoff, etc.) for related anime
     manga.related_anime = doc.css('manga related-next').map { |rel| { :ann_id=>rel['id'], :type=>rel['rel'] } }
 
     # Fetch chapters info
     if options[:inc_chap]
-      manga.chapters.concat(fetch_chapters(options[:ann_id]))
+      manga.chapters.concat(fetch_chapters(options, myparser))
       manga.chapter_count = manga.chapters.length
     end
 
     # Fetch volumes info
     unless manga.volume_urls.empty? || !options[:inc_vol]
-      fetch_vol_titles(options[:ann_id])
+      fetch_vol_titles(options[:ann_id], myparser)
       manga.volume_urls.each do | url |
-        manga.volumes.push(fetch_volume(options, url, @vol_titles, manga.title))
+        manga.volumes.push(fetch_volume(options, url, @vol_titles, manga.title, myparser))
       end
     end
 

@@ -54,12 +54,14 @@ unless options[:search_titles] || options[:ann_id]
   exit 1
 end
 
+myparser = Parser.new
+
 if options[:ann_id]
-  fetch_manga(options)
+  fetch_manga(options, myparser)
 else
-  options[:ann_id] = search_titles(options)
+  options[:ann_id] = search_titles(options, myparser)
   if options[:ann_id]
-    fetch_manga(options)
+    fetch_manga(options, myparser)
   else
     puts 'No ANN ID found'
     exit

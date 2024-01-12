@@ -129,7 +129,7 @@ def create_release_obj(rel_list, vol_id, vol_titles, series_title)
   release
 end
 
-def fetch_volume(options, vol_url, vol_titles, series_title)
+def fetch_volume(options, vol_url, vol_titles, series_title, myparser)
   # Grab vol ID from URL
   vol_id = vol_url.match(/id=(\d+)/)[1].to_i
 
@@ -137,7 +137,7 @@ def fetch_volume(options, vol_url, vol_titles, series_title)
     puts "Processing volume release ID: #{vol_id}"
   end
 
-  doc = parse_html(vol_url)
+  doc = myparser.parse_html(vol_url)
   release_info = doc.at('#content-zone div')
   # Remove A-Z navigation links
   release_info.css('center').remove

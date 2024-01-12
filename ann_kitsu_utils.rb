@@ -1,6 +1,7 @@
 require 'nokogiri'
 require 'open-uri'
 require 'net/http'
+require 'ruby-limiter'
 require 'json'
 require 'date'
 
@@ -23,21 +24,35 @@ def clean_text(text)
   Nokogiri::HTML.fragment(text).text
 end
 
-def parse_xml(url)
-  begin
-    Nokogiri::XML(URI.open(url))
-  rescue StandardError => e
-    puts "Failed to open URL: #{url}. Error: #{e.message}"
-    exit
-  end
-end
+# From https://www.animenewsnetwork.com/encyclopedia/api.php
+# "The API is rate-limited to 1 request per second per IP address; requests over this threshold will be delayed. If you
+# would rather make 5 requests close together every 5 seconds, use nodelay.api.xml instead; but requests over the 1/s
+# threshold will get a 503 error."
+class Parser
+  extend Limiter::Mixin
 
-def parse_html(url)
-  begin
-    Nokogiri::HTML(URI.open(url))
-  rescue StandardError => e
-    puts "Failed to open URL: #{url}. Error: #{e.message}"
-    exit
+  limit_method(:parse_xml, rate: 1, interval: 1) do
+  end
+
+  limit_method(:parse_html, rate: 1, interval: 1) do
+  end
+
+  def parse_xml(url)
+    begin
+      Nokogiri::XML(URI.open(url))
+    rescue StandardError => e
+      puts "Failed to open URL: #{url}. Error: #{e.message}"
+      exit
+    end
+  end
+
+  def parse_html(url)
+    begin
+      Nokogiri::HTML(URI.open(url))
+    rescue StandardError => e
+      puts "Failed to open URL: #{url}. Error: #{e.message}"
+      exit
+    end
   end
 end
 
@@ -122,8 +137,8 @@ end
 
 # @param [Integer] Map an ANN ID to a name
 # @return [String] Manga publication name: Weekly Shonen Jump, Shonen Gangan, Hana to Yume, etc.
-def ann_serial_by_id(ann_id)
-  doc = parse_xml("https://cdn.animenewsnetwork.com/encyclopedia/api.xml?manga=#{ann_id}")
+def ann_serial_by_id(ann_id, myparser)
+  doc = myparser.parse_xml("https://cdn.animenewsnetwork.com/encyclopedia/api.xml?manga=#{ann_id}")
   manga = doc.at('manga')
   unless manga['name'].empty? || manga.at('warning')
     manga['name']
